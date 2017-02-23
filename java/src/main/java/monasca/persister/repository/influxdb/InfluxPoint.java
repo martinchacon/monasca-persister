@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2014 Hewlett-Packard Development Company, L.P.
+ * Copyright (c) 2017 FUJITSU LIMITED
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,18 +20,20 @@ package monasca.persister.repository.influxdb;
 
 import java.util.Map;
 
+import com.google.common.base.Joiner;
+
 public class InfluxPoint {
 
   private final String measurement;
   private final Map<String, String> tags;
-  private final String time;
+  private final Long time;
   private final Map<String, Object> fields;
   private final String Precision = "ms";
 
   public InfluxPoint(
       final String measurement,
       final Map<String, String> tags,
-      final String time,
+      final Long time,
       final Map<String, Object> fields) {
 
     this.measurement = measurement;
@@ -47,7 +50,7 @@ public class InfluxPoint {
     return this.tags;
   }
 
-  public String getTime() {
+  public Long getTime() {
     return this.time;
   }
 
@@ -57,6 +60,16 @@ public class InfluxPoint {
 
   public String getPrecision() {
     return Precision;
+  }
+
+  // Create influxdb line protocol string
+  public String toInflux() {
+    return new StringBuilder(this.measurement).append(",")
+      .append(Joiner.on(",").join(this.tags.entrySet().iterator()))
+      .append(" ")
+      .append(Joiner.on(",").join(this.fields.entrySet().iterator()))
+      .append(" ").append(this.time)
+      .toString();
   }
 
 }

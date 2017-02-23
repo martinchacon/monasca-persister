@@ -1,6 +1,7 @@
 
 /*
  * Copyright (c) 2014 Hewlett-Packard Development Company, L.P.
+ * Copyright (c) 2017 FUJITSU LIMITED
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +26,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import scala.collection.mutable.StringBuilder;
 import io.dropwizard.setup.Environment;
 import monasca.persister.repository.RepoException;
 
@@ -74,7 +76,7 @@ public class InfluxV9MetricRepo extends InfluxMetricRepo {
               influxPoint =
               new InfluxPoint(definition.getName(),
                               tagMap,
-                              measurement.getISOFormattedTimeString(),
+                              measurement.getTime(),
                               buildValueMap(measurement));
 
           influxPointList.add(influxPoint);
@@ -89,24 +91,24 @@ public class InfluxV9MetricRepo extends InfluxMetricRepo {
 
   private Map<String, Object> buildValueMap(Measurement measurement) {
 
-    Map<String, Object> valueMap = new HashMap<>();
+    Map<String, Object> valueMap = new HashMap<String, Object>();
+    Map<String, String> valueMeta = measurement.getValueMeta();
 
-    valueMap.put("value", measurement.getValue());
-
-    String valueMetaJSONString = measurement.getValueMetaJSONString();
-
-    if (valueMetaJSONString == null || valueMetaJSONString.isEmpty()) {
-
-      valueMap.put("value_meta", "{}");
-
-    } else {
-
-      valueMap.put("value_meta", valueMetaJSONString);
-
+    if (valueMeta != null && valueMeta.size() != 0) {
+      /*
+       * Refactor value meta strings like:
+       * "error: error(111, 'Connection refused'). * Connection failed after 3 ms"
+       * to "error: error(111, \"Connection refused\"). Connection failed after 3 ms"
+       * Otherwise persisting to influx will fail.
+       */
+      for (Map.Entry<String, String> entry : valueMeta.entrySet()) {
+        valueMap.put(entry.getKey(),
+          new StringBuilder("\"").append(entry.getValue().replaceAll("'", "\\\\\"")).append("\""));
+      }
     }
 
+    valueMap.put("value", measurement.getValue());
     return valueMap;
-
   }
 
   private Map<String, String> buildTagMap(Definition definition, Dimensions dimensions) {

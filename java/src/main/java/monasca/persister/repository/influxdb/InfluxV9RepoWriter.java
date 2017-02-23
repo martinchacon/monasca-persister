@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2014 Hewlett-Packard Development Company, L.P.
+ * Copyright (c) 2017 FUJITSU LIMITED
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,10 +22,6 @@ import monasca.persister.configuration.PersisterConfig;
 import monasca.persister.repository.RepoException;
 
 import com.google.inject.Inject;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import org.apache.commons.codec.binary.Base64;
 import org.apache.http.Header;
 import org.apache.http.HeaderElement;
@@ -38,8 +35,8 @@ import org.apache.http.HttpStatus;
 import org.apache.http.client.entity.EntityBuilder;
 import org.apache.http.client.entity.GzipDecompressingEntity;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.ByteArrayEntity;
 import org.apache.http.entity.ContentType;
-import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
@@ -49,7 +46,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.HashMap;
 
 public class InfluxV9RepoWriter {
 
@@ -67,17 +63,17 @@ public class InfluxV9RepoWriter {
 
   private final String baseAuthHeader;
 
-  private final ObjectMapper objectMapper = new ObjectMapper();
-
   @Inject
   public InfluxV9RepoWriter(final PersisterConfig config) {
 
     this.influxName = config.getInfluxDBConfiguration().getName();
-    this.influxUrl = config.getInfluxDBConfiguration().getUrl() + "/write";
     this.influxUser = config.getInfluxDBConfiguration().getUser();
     this.influxPass = config.getInfluxDBConfiguration().getPassword();
     this.influxCreds = this.influxUser + ":" + this.influxPass;
     this.influxRetentionPolicy = config.getInfluxDBConfiguration().getRetentionPolicy();
+    this.influxUrl = new StringBuilder(config.getInfluxDBConfiguration().getUrl()).
+      append("/write?db=").append(this.influxName).append("&precision=ms").
+      append("&rp=").append(this.influxRetentionPolicy).toString();
     this.gzip = config.getInfluxDBConfiguration().getGzip();
 
     this.baseAuthHeader = "Basic " + new String(Base64.encodeBase64(this.influxCreds.getBytes()));
@@ -132,12 +128,7 @@ public class InfluxV9RepoWriter {
     request.addHeader("Content-Type", "application/json");
     request.addHeader("Authorization", this.baseAuthHeader);
 
-    InfluxWrite
-        influxWrite =
-        new InfluxWrite(this.influxName, this.influxRetentionPolicy, influxPointArry,
-                        new HashMap<String, String>());
-
-    String jsonBody = getJsonBody(influxWrite);
+    byte[] byte_array = getBinary(influxPointArry);
 
     if (this.gzip) {
 
@@ -147,8 +138,8 @@ public class InfluxV9RepoWriter {
           requestEntity =
           EntityBuilder
               .create()
-              .setText(jsonBody)
-              .setContentType(ContentType.APPLICATION_JSON)
+              .setBinary(byte_array)
+              .setContentType(ContentType.DEFAULT_BINARY)
               .setContentEncoding("UTF-8")
               .gzipCompress()
               .build();
@@ -161,9 +152,9 @@ public class InfluxV9RepoWriter {
 
       logger.debug("[{}]: gzip set to false. sending non-gzip msg", id);
 
-      StringEntity stringEntity = new StringEntity(jsonBody, "UTF-8");
+      ByteArrayEntity byteEntity = new ByteArrayEntity(byte_array);
 
-      request.setEntity(stringEntity);
+      request.setEntity(byteEntity);
 
     }
 
@@ -224,19 +215,11 @@ public class InfluxV9RepoWriter {
     }
   }
 
-  private String getJsonBody(InfluxWrite influxWrite) throws RepoException {
-
-    String json = null;
-
-    try {
-
-      json = this.objectMapper.writeValueAsString(influxWrite);
-
-    } catch (JsonProcessingException e) {
-
-      throw new RepoException("failed to serialize json", e);
+  private byte[] getBinary(InfluxPoint[] influxPointArry) {
+    StringBuilder binaryString = new StringBuilder();
+    for (InfluxPoint influxPoint : influxPointArry) {
+      binaryString.append(influxPoint.toInflux()).append(System.lineSeparator());
     }
-
-    return json;
+    return binaryString.toString().getBytes();
   }
 }

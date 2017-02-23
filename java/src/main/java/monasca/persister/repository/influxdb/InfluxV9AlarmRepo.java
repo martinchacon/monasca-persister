@@ -1,5 +1,6 @@
 /*
  * (C) Copyright 2014-2016 Hewlett Packard Enterprise Development Company LP
+ * Copyright (c) 2017 FUJITSU LIMITED
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,8 +28,6 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
-import org.joda.time.format.DateTimeFormatter;
-import org.joda.time.format.ISODateTimeFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,8 +46,6 @@ public class InfluxV9AlarmRepo extends InfluxAlarmRepo {
   private final InfluxV9RepoWriter influxV9RepoWriter;
 
   private final ObjectMapper objectMapper = new ObjectMapper();
-
-  private final DateTimeFormatter dateFormatter = ISODateTimeFormat.dateTime();
 
   @Inject
   public InfluxV9AlarmRepo(
@@ -200,9 +197,7 @@ public class InfluxV9AlarmRepo extends InfluxAlarmRepo {
 
       valueMap.put("reason_data", "{}");
 
-      DateTime dateTime = new DateTime(event.timestamp, DateTimeZone.UTC);
-
-      String dateString = this.dateFormatter.print(dateTime);
+      Long dateTime = new DateTime(event.timestamp, DateTimeZone.UTC).getMillis();
 
       Map<String, String> tags = new HashMap<>();
 
@@ -212,7 +207,7 @@ public class InfluxV9AlarmRepo extends InfluxAlarmRepo {
 
       InfluxPoint
           influxPoint =
-          new InfluxPoint(ALARM_STATE_HISTORY_NAME, tags, dateString, valueMap);
+          new InfluxPoint(ALARM_STATE_HISTORY_NAME, tags, dateTime, valueMap);
 
       influxPointList.add(influxPoint);
 
