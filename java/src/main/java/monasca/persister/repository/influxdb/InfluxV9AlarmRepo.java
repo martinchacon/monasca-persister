@@ -75,6 +75,8 @@ public class InfluxV9AlarmRepo extends InfluxAlarmRepo {
 
       Map<String, Object> valueMap = new HashMap<>();
 
+      Map<String, String> tags = new HashMap<>();
+
       if (event.tenantId == null) {
 
         logger.error("[{}]: tenant id cannot be null. Dropping alarm state history event.", id);
@@ -83,7 +85,7 @@ public class InfluxV9AlarmRepo extends InfluxAlarmRepo {
 
       } else {
 
-        valueMap.put("tenant_id", event.tenantId);
+          tags.put("tenant_id", event.tenantId);
       }
 
       if (event.alarmId == null) {
@@ -94,27 +96,30 @@ public class InfluxV9AlarmRepo extends InfluxAlarmRepo {
 
       } else {
 
-        valueMap.put("alarm_id", event.alarmId);
+          tags.put("alarm_id", event.alarmId);
       }
 
       if (event.metrics == null) {
 
         logger.error("[{}]: metrics cannot be null. Settings metrics to empty JSON", id);
 
-        valueMap.put("metrics", "{}");
+        valueMap.put("metrics", "\"{}\"");
 
       } else {
 
         try {
 
-          valueMap.put("metrics", this.objectMapper.writeValueAsString(event.metrics));
+          valueMap.put("metrics",
+                  new StringBuilder().append('"').
+                  append(this.objectMapper.writeValueAsString(event.metrics)).
+                  append('"').toString());
 
         } catch (JsonProcessingException e) {
 
           logger.error("[{}]: failed to serialize metrics {}", id, event.metrics, e);
           logger.error("[{}]: setting metrics to empty JSON", id);
 
-          valueMap.put("metrics", "{}");
+          valueMap.put("metrics", "\"{}\"");
 
         }
       }
@@ -123,11 +128,12 @@ public class InfluxV9AlarmRepo extends InfluxAlarmRepo {
 
         logger.error("[{}]: old state cannot be null. Setting old state to empty string.", id);
 
-        valueMap.put("old_state", "");
+        valueMap.put("old_state", "\"\"");
 
       } else {
 
-        valueMap.put("old_state", event.oldState);
+        valueMap.put("old_state",
+                new StringBuilder().append('"').append(event.oldState).append('"').toString());
 
       }
 
@@ -135,50 +141,57 @@ public class InfluxV9AlarmRepo extends InfluxAlarmRepo {
 
         logger.error("[{}]: new state cannot be null. Setting new state to empty string.", id);
 
-        valueMap.put("new_state", "");
+        valueMap.put("new_state", "\"\"");
 
       } else {
 
-        valueMap.put("new_state", event.newState);
+        valueMap.put("new_state",
+                new StringBuilder().append('"').append(event.newState).append('"').toString());
 
       }
 
       if (event.link == null) {
 
-        valueMap.put("link", "");
+        valueMap.put("link", "\"\"");
 
       } else {
 
-        valueMap.put("link", event.link);
+        valueMap.put("link",
+                new StringBuilder().append('"').append(event.link).append('"').toString());
       }
 
       if (event.lifecycleState == null) {
 
-        valueMap.put("lifecycle_state", "");
+        valueMap.put("lifecycle_state", "\"\"");
 
       } else {
 
-        valueMap.put("lifecycle_state", event.lifecycleState);
+        valueMap.put("lifecycle_state",
+                new StringBuilder().append('"').append(event.lifecycleState).
+                append('"').toString());
       }
 
       if (event.subAlarms == null) {
 
         logger.debug("[{}]: sub alarms is null. Setting sub alarms to empty JSON", id);
 
-        valueMap.put("sub_alarms", "[]");
+        valueMap.put("sub_alarms", "\"[]\"");
 
       } else {
 
         try {
 
-          valueMap.put("sub_alarms", this.objectMapper.writeValueAsString(event.subAlarms));
+          valueMap.put("sub_alarms",
+                  new StringBuilder().append('"').
+                  append(this.objectMapper.writeValueAsString(event.subAlarms)).
+                  append('"').toString());
 
         } catch (JsonProcessingException e) {
 
           logger.error("[{}]: failed to serialize sub alarms {}", id, event.subAlarms, e);
           logger.error("[{}]: Setting sub_alarms to empty JSON", id);
 
-          valueMap.put("sub_alarms", "[]");
+          valueMap.put("sub_alarms", "\"[]\"");
 
         }
 
@@ -188,22 +201,18 @@ public class InfluxV9AlarmRepo extends InfluxAlarmRepo {
 
         logger.error("[{}]: reason cannot be null. Setting reason to empty string.", id);
 
-        valueMap.put("reason", "");
+        valueMap.put("reason", "\"\"");
 
       } else {
 
-        valueMap.put("reason", event.stateChangeReason);
+        valueMap.put("reason",
+                new StringBuilder().append('"').append(event.stateChangeReason).
+                append('"').toString());
       }
 
-      valueMap.put("reason_data", "{}");
+      valueMap.put("reason_data", "\"{}\"");
 
       Long dateTime = new DateTime(event.timestamp, DateTimeZone.UTC).getMillis();
-
-      Map<String, String> tags = new HashMap<>();
-
-      tags.put("tenant_id", event.tenantId);
-
-      tags.put("alarm_id", event.alarmId);
 
       InfluxPoint
           influxPoint =
