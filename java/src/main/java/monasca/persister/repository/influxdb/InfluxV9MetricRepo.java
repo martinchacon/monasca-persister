@@ -103,7 +103,7 @@ public class InfluxV9MetricRepo extends InfluxMetricRepo {
     } else {
 
       valueMap.put("value_meta",
-          new StringBuilder().append('"').append(valueMetaJSONString).append('"').toString());
+              new StringBuilder().append("\"").append(valueMetaJSONString).append("\""));
 
     }
 

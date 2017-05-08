@@ -17,6 +17,7 @@ package monasca.persister.repository.influxdb;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import org.apache.commons.lang3.StringEscapeUtils;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.format.DateTimeFormatter;
@@ -76,12 +77,13 @@ public final class Measurement {
     if (!this.valueMeta.isEmpty()) {
 
       try {
-
-        return objectMapper.writeValueAsString(this.valueMeta);
+        return StringEscapeUtils.escapeJson(
+                objectMapper.writeValueAsString(this.valueMeta));
 
       } catch (JsonProcessingException e) {
 
-        logger.error("Failed to serialize value meta {}", this.valueMeta, e);
+        logger.error("Failed to serialize value meta {}",
+                this.valueMeta, e);
 
       }
 
